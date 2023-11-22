@@ -45,7 +45,8 @@ class HBNBCommand(cmd.Cmd):
         kwargs = {}
         for param in params:
             key, val = param.split("=")
-            val = val.strip('"').replace("_", " ") if val[0] == '"' else eval(val, {}, {})
+            val = val.strip('"').replace("_", " ")
+            if val[0] == '"' else eval(val, {}, {})
             kwargs[key] = val
 
         try:
