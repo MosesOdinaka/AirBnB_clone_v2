@@ -1,43 +1,64 @@
 #!/usr/bin/python3
+""" Base model class for AirBnB clone """
 from uuid import uuid4
 from datetime import datetime
 import models
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, String, Datetime
+
+Base = declarative_base()
 
 
 class BaseModel:
     """ BaseModel class that defines all common methods for other classes """
-    def __init__(self, *args, **kwargs):
-        """ Initialization of the BaseModel class """
-        self.id = str(uuid4())
-        self.created_at = self.updated_at = datetime.now()
-        models.storage.new(self)
+	id = Column(String(60), primary_key=True, nullable=False)
+	created_at = Column(Datetime, nullable=False, default=datetime.utcnow())
+	updated_at = Column(Datetime, nullable=False, default=datetime.utcnow())
 
-        for key, value in kwargs.items():
-            if key == "__class__":
-                continue
-            if key in ["created_at", "updated_at"]:
-                value = datetime.fromisoformat(value)
-            setattr(self, key, value)
+	def __init__(self, *args, **kwargs):
+		"""
+		Initialize the BaseModel class
+		"""
+		self.id = str(uuid4())
+		self.created_at = self.updated_at = datetime.utcnow()
+		if kwargs:
+			for key, value in kwargs.items():
+				if key == "created_at" or key == "updated_at":
+					value = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
+				if key != "__class__":
+					setattr(self, key, value)
 
-    def save(self):
-        """
-        Updates the public instance attribute updated_at with the current
-        datetime
-        """
-        self.updated_at = datetime.now()
-        models.storage.save()
+	def to_dict(self):
+		"""
+		Creates dictionary of the class and returns a dictionary of all the
+		key values
+		"""
+		my_dict = self.__dict__.copy()
+		my_dict["__class__"] = str(type(self).__name__)
+		my_dict["created_at"] = self.created_at.isoformat()
+		my_dict["updated_at"] = self.updated_at.isoformat()
+		my_dict.pop("_sa_instance_state", None)
+		return my_dict
 
-    def to_dict(self):
-        """ Returns a dictionary containing all keys/values of __dict__ of the
-        instance """
-        dict1 = {
-            **self.__dict__,
-            'created_at': self.created_at.strftime("%Y-%m-%dT%H:%M:%S.%f"),
-            'updated_at': self.updated_at.strftime("%Y-%m-%dT%H:%M:%S.%f"),
-            '__class__': self.__class__.__name__
-        }
-        return dict1
+	def __str__(self):
+		"""
+		Returns a string of the class, the id and the dictionary of the
+		instance's attribute.
+		"""
+		dictn = self.__dict__.copy()
+		dictn.pop("_sa_instance_state", None)
+		return "[{}] ({}) {}".format(type(self).__name__, self.id, dictn)
 
-    def __str__(self):
-        """ Prints a string representation """
-        return f"[{self.__class__.__name__}] ({self.id}) {self.__dict__}"
+	def save(self):
+		"""
+		Updates the updated_at attribute and saves the instance to storage.
+		"""
+		self.updated_at = datetime.utcnow()
+		models.storage.new(self)
+		models.storage.save()
+
+	def delete(self):
+		"""
+		Deletes an instance of a class.
+		"""
+		models.storage.delete(self)
